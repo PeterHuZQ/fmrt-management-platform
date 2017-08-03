@@ -2,6 +2,7 @@ import Vue from 'vue'
 import Router from 'vue-router'
 import Layout from '@/components/common/Layout'
 import Welcome from '@/components/page/Welcome'
+import UserCenterView from '@/components/page/userCenter/UserCenterView'
 
 Vue.use(Router)
 
@@ -17,6 +18,10 @@ export default new Router({
         {
           path: 'Welcome',
           component: Welcome
+        },
+        {
+          path: 'rest/page/users',
+          component: UserCenterView
         }
       ]
     }

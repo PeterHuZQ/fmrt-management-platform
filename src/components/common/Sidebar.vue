@@ -3,8 +3,8 @@
     <el-menu :default-active="route" class="el-menu-vertical-demo" theme="dark" unique-opened router>
       <el-submenu index="1" >
         <template slot="title">
-          <i class=""></i>客户管理</template>
-        <el-menu-item  index="/customerCenter/userCenter">基本信息</el-menu-item>
+          <i class=""></i>用户中心</template>
+        <el-menu-item  index="/rest/page/users">基本信息</el-menu-item>
       </el-submenu>
     </el-menu>
   </div>
