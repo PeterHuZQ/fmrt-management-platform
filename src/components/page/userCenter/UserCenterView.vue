@@ -14,11 +14,6 @@
         width="80">
       </el-table-column>
       <el-table-column
-        prop="uuid"
-        label="ID"
-        width="100">
-      </el-table-column>
-      <el-table-column
         prop="userName"
         label="用户名"
         width="180">
@@ -55,6 +50,19 @@
       </el-table-column>
     </el-table>
     <!--表格结束  -->
+    <!--页码  -->
+    <div class="block">
+      <el-pagination
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        :current-page="currentPage"
+        :page-sizes="[5, 10, 15, 20]"
+        :page-size="currentSize"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="totalCount">
+      </el-pagination>
+    </div>
+    <!--页码 结束 -->
     <!-- 弹出新建 开始 -->
     <div class="messageBox">
       <el-dialog title="新建用户信息" v-model="isAdd" class="addForm" size="tiny">
@@ -80,7 +88,7 @@
         </el-form>
         <div slot="footer" class="dialog-footer">
           <el-button type="primary" @click="addReset">取消</el-button>
-          <el-button type="primary">确定</el-button>
+          <el-button type="primary" @click="getInsertCustomerBasic">确定</el-button>
         </div>
       </el-dialog>
     </div>
@@ -89,12 +97,19 @@
 </template>
 
 <script>
-import axios from 'axios'
+import api from '@/api'
 import {formatDate} from '../../../common/js/date'
 
 export default {
   data () {
     return {
+      searchFormData: {
+        page: 1, // 页面请求的初始值
+        rows: 5 // 页面请求的数量
+      },
+      totalCount: 1, // 总页数,默认为1
+      currentSize: 5, // 当前页数,默认为5
+      currentPage: 1, // 当前页码
       tableData: [], // 列表数据
       isAdd: false,  // 添加弹窗
       addForm: {
@@ -108,24 +123,34 @@ export default {
     }
   },
   created () {
-    this.GetData()
+    this.getListUser() // 页面渲染时发送请求
   },
   methods: {
-    GetData () {
-      axios.get('/api/rest/user/list').then((res) => {
-        for (let i = 0; i < res.data.rows.length; i++) {
-          let user = {}
-          user.uuid = res.data.rows[i].uuid
-          user.userName = res.data.rows[i].userName
-          user.name = res.data.rows[i].name
-          user.age = res.data.rows[i].age
-          user.sex = this.formatSex(res.data.rows[i].sex)
-          user.birthday = this.formatBirthday(res.data.rows[i].birthday)
-          user.insert_time = this.formatDate(res.data.rows[i].insert_time)
-          user.update_time = this.formatDate(res.data.rows[i].update_time)
-          this.tableData.push(user)
+    async getListUser() {
+      const obj = {} // 初始化一个对象
+      Object.keys(this.searchFormData).forEach(key => {
+        if (this.searchFormData[key] !== '') {
+          obj[key] = this.searchFormData[key]
         }
       })
+      let result
+      try {
+        result = await api.userCenter.getListUser(obj).then((res) => {
+          return res.data
+        })
+      } catch (e) {
+        console.error('e: ', e)
+        return
+      }
+      if (result.status === 200) {
+        this.tableData = result.rows
+        this.totalCount = result.total  // 把数据中的总条数赋值到页面中
+      } else {
+        this.$message({
+          message: '获取数据失败',
+          type: 'warning'
+        })
+      }
     },
     formatSex (val) {
       if (val === 1) {
@@ -144,6 +169,23 @@ export default {
       let date = new Date(time)
       return formatDate(date, 'yyyy-MM-dd hh:mm:ss')  // 调用引入的JS模块
     },
+    // 当前页码数
+    handleCurrentChange(val) {
+      if (this.currentPage !== val) {
+        this.currentPage = val
+        this.isQuery = false
+      }
+      if (!this.isQuery) {
+        this.searchFormData.page = val
+        this.getListUser()
+      }
+    },
+    // 当前一页的条数
+    handleSizeChange(val) {
+      this.currentSize = val
+      this.searchFormData.rows = val
+      this.getListUser()
+    },
     // 点击新建
     addUserInfo() {
       this.addReset() // 清空表单
@@ -151,11 +193,72 @@ export default {
     },
     // 新建重置
     addReset() {
-      this.addForm.idCard = ''
-      this.addForm.idName = ''
-      this.addForm.idType = ''
-      this.unitVal = []
-      this.isAdd = false
+      this.addForm.userName = ''
+      this.addForm.name = ''
+      this.addForm.password = ''
+      this.addForm.age = ''
+      this.addForm.sex = ''
+      this.addForm.birthday = ''
+    },
+    async getInsertCustomerBasic() {
+      // 判断保存的数据是否为空
+      if (!this.addForm.userName) {
+        this.$message({
+          message: '用户名不能为空',
+          type: 'warning'
+        })
+        return false
+      }
+      if (!this.addForm.password) {
+        this.$message({
+          message: '密码不能为空',
+          type: 'warning'
+        })
+        return false
+      }
+      if (!this.addForm.name) {
+        this.$message({
+          message: '姓名不能为空',
+          type: 'warning'
+        })
+        return false
+      }
+      if (!this.addForm.age) {
+        this.$message({
+          message: '年龄不能为空',
+          type: 'warning'
+        })
+        return false
+      }
+      if (!this.addForm.sex) {
+        this.$message({
+          message: '性别不能为空',
+          type: 'warning'
+        })
+        return false
+      }
+      if (!this.addForm.birthday) {
+        this.$message({
+          message: '出生日期不能为空',
+          type: 'warning'
+        })
+        return false
+      }
+      let result
+      try {
+        result = await api.userCenter.getInsertCustomerBasic(this.addForm)
+      } catch (e) {
+        console.error('error: ', e)
+      } finally {
+        this.isAdd = false     // 关闭弹窗
+      }
+      if (result.data.status === 200) {
+        this.getListUser()  // 新增标签保存成功，从新刷新界面
+        this.$message({
+          message: '保存成功',
+          type: 'success'
+        })
+      }
     }
   }
 }
